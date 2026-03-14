@@ -10,15 +10,37 @@ const app = express();
 app.get('/', (req, res) => res.send('Server Bot AI Super Jalan!'));
 app.listen(process.env.PORT || 3000, () => console.log('Web server aktif!'));
 
-// ==========================================
-// 2. INISIALISASI BOT & GOOGLE AI
-// ==========================================
-const bot = new Telegraf(process.env.TELEGRAM_BOT_TOKEN);
-// Kita tetap butuh API Key Google, tapi kali ini untuk model Teks, bukan Gambar
-const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
 
-bot.start((ctx) => {
-  ctx.reply('Halo! Ketik /gambar [ide singkat]. Aku akan meracik ceritanya dan membuatkan gambar HD untukmu!');
+    // --- TAHAP 2: GENERATE GAMBAR LANGSUNG RESOLUSI TINGGI ---
+    const encodedPrompt = encodeURIComponent(magicPrompt);
+    const imageUrl = `https://image.pollinations.ai/prompt/${encodedPrompt}?width=1080&height=1920&nologo=true`;
+
+    // Kita perintahkan server Node.js (Railway) untuk mendownload gambarnya dulu
+    const imageResponse = await fetch(imageUrl);
+    
+    if (!imageResponse.ok) {
+        throw new Error('Gagal mengambil gambar dari server AI pembuat gambar.');
+    }
+
+    // Mengubah hasil download menjadi bentuk Buffer (File Fisik)
+    const arrayBuffer = await imageResponse.arrayBuffer();
+    const imageBuffer = Buffer.from(arrayBuffer);
+
+    // Mengirim gambar hasil akhir ke Telegram menggunakan Buffer (source), BUKAN url lagi
+    await ctx.replyWithPhoto(
+      { source: imageBuffer }, 
+      { caption: `✨ Berhasil! Ide awal: "${userPrompt}"\n\n_Cerita dan Gambar oleh AI_`, parse_mode: 'Markdown' }
+    );
+    
+    // Membersihkan pesan loading
+    await ctx.telegram.deleteMessage(ctx.chat.id, statusMsg.message_id);
+
+  } catch (error) {
+    console.error('Error di sistem:', error);
+    // Pastikan pesan loading dihapus kalau terjadi error
+    try { await ctx.telegram.deleteMessage(ctx.chat.id, statusMsg.message_id); } catch(e){}
+    ctx.reply('Waduh, ada kendala saat memproses gambarnya. Mungkin prompt terlalu panjang atau server gambar sedang sibuk. Coba lagi ya.');
+  }
 });
 
 // ==========================================
