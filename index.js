@@ -47,7 +47,7 @@ bot.command('gambar', async (ctx) => {
   try {
     // Memanggil model Gemini 3.1 Flash Image (Nano Banana 2)
     const response = await ai.models.generateContent({
-        model: 'gemini-3.1-flash-image',
+        model: 'gemini-3.1-flash-image-preview',
         contents: finalPrompt,
     });
 
